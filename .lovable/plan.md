@@ -1,95 +1,132 @@
-# Architecture — European Automotive Diagnostics & Tuning Platform
+# Revised Architecture — European Automotive Diagnostics & Tuning Platform
 
-No code yet. This is the architecture for your review and approval.
+Revised per your corrections. Still no code. Principle applied throughout: scalable but simple to operate, minimal manual work for you.
 
 ## 1. Recommended architecture
 
-- Frontend: TanStack Start (React 19, SSR) — SEO-critical for product/brand/category pages.
-- Backend: Lovable Cloud (Postgres + auth + storage + server functions). No separate API server.
-- Data access: server functions for anything price/stock/license related; public catalog reads via narrow public read policies so pages stay SSR-cacheable.
-- Two surfaces in one app: `/` storefront (public + customer account) and `/admin` (role-gated).
-- Files (invoices, firmware, license files, manuals) in Cloud storage, private buckets with signed URLs.
-- Search: Postgres full-text + trigram for product search; filters as indexed columns/JSONB attributes.
+- Frontend: TanStack Start (React 19, SSR) — needed for SEO on product, brand and category pages.
+- Backend: Lovable Cloud (Postgres + auth + storage + server functions). One system, no external services to manage.
+- One app, two surfaces: `/` storefront (public + customer account), `/admin` (role-gated).
+- Private storage buckets with signed links for invoices, license files, manuals, software downloads.
+- Search: Postgres full-text + fuzzy matching; filters on indexed spec columns.
+- Everything money-, stock- or license-related runs server-side only.
 
-## 2. Database structure (core tables)
+## 2. Database structure
 
-Catalog: `brands`, `categories` (self-referencing tree), `products`, `product_variants`, `product_media`, `product_attributes`, `product_translations`, `category_translations`, `brand_translations`.
+Catalog: `brands`, `categories`, `products`, `product_variants`, `product_media`, `product_documents`, `product_specs`, `product_compatibility`.
 
-Commerce: `carts`, `cart_items`, `orders`, `order_items`, `payments`, `shipments`, `addresses`, `tax_rates`, `shipping_zones`, `coupons`.
+Translations (one pattern reused everywhere, so new languages need no schema change): `languages`, `ui_translations`, and `*_translations` tables keyed by `(entity_id, language_code)`.
 
-Customers: `profiles`, `user_roles` (separate table — never a role column on profiles), `companies` (B2B), `company_members`, `b2b_applications`, `price_lists`, `price_list_items`, `customer_groups`.
+Commerce: `carts`, `cart_items`, `orders`, `order_items`, `payments`, `invoices`, `addresses`, `shipping_methods`, `coupons`.
 
-Serials/Licenses/Warranty: `serial_numbers`, `devices` (customer-owned units), `licenses`, `license_activations`, `warranties`, `warranty_claims`, `rma_requests`.
+Customers: `profiles`, `user_roles` (separate table, never a column on profiles), `companies` (B2B), `b2b_applications`, `price_lists`, `price_list_items`.
 
-ECU: `vehicle_makes`, `vehicle_models`, `vehicle_generations`, `engines`, `ecus`, `tcus`, `ecu_protocols`, `product_ecu_coverage`.
+Serials / Licenses / Warranty: `serial_numbers`, `devices`, `licenses`, `license_activations`, `warranties`, `warranty_claims`.
 
-Ops: `inventory`, `stock_movements`, `suppliers`, `import_jobs`, `import_rows`, `import_errors`, `approval_queue`, `audit_log`, `settings`, `translations`, `currencies`, `fx_rates`.
+ECU: `vehicle_makes`, `vehicle_models`, `engines`, `ecu_units`, `ecu_products`, `product_ecu_coverage`.
 
-Every table: RLS on, explicit grants, `auth.uid()`-scoped customer policies, admin access via a `has_role()` security-definer function.
+Ops: `inventory`, `stock_movements`, `suppliers`, `import_jobs`, `import_rows`, `import_errors`, `staged_products`, `audit_log`, `settings`, `currencies`, `fx_rates`, `tax_settings`.
+
+Every table: RLS on, explicit grants, customer rows scoped to `auth.uid()`, admin access through a `has_role()` security-definer function.
 
 ## 3. Main pages (storefront)
 
-Home, Brands index + brand detail, Category tree pages, Product listing with faceted filters, Search results, Product detail (specs, ECU coverage, compatible licenses, stock, warranty terms), Cart, Checkout (address → shipping → VAT → payment), Order confirmation.
+Home · Brands + brand detail · Categories · Product listing with filters · Search · Product detail (specs, OBD/BENCH/BOOT, Master/Slave, ECU coverage, stock, warranty) · Vehicle/ECU compatibility search · Cart · Checkout · Order confirmation.
 
-Account: Dashboard, Orders + order detail/invoice, My Devices (serial-bound), Licenses (activate/renew/transfer), Warranty (status + claim), Addresses, Company/B2B profile, Downloads.
+Account: Dashboard · Orders + PDF invoice · My Devices · Licenses · Warranty · Addresses · Company/VAT details · Downloads.
 
-Legal/EU: Imprint, Terms, Privacy, Returns/Withdrawal, Shipping, Cookie consent.
+Legal: Imprint, Terms, Privacy, Returns, Shipping.
 
-## 4. Admin panel structure
+## 4. Admin panel
 
-Dashboard (sales, stock alerts, pending approvals, failed imports) · Catalog (Products, Variants, Brands, Categories, Media, Attributes) · Customers (B2C, B2B companies, approvals, price lists) · Sales (Orders, Payments, Refunds, Shipments, Invoices) · Inventory (Stock, Movements, Suppliers, Purchase intake) · Pricing (price lists, tiers, currency overrides, promotions) · Imports (jobs, mapping profiles, error queue, re-run) · ECU database (vehicles, ECUs/TCUs, coverage matrix) · Serial numbers · Licenses (issue, revoke, activations) · Warranty (registrations, claims, RMA) · Translations · Settings (tax/VAT, shipping, currencies, payment, roles, audit log).
+Single dashboard with: Products · Imports · Pending Approval · Pricing · Stock · Orders · Customers (B2C + B2B) · Brands · Categories · ECU database · Serial numbers · Licenses · Warranty · Translations · Settings.
+
+Dashboard home surfaces the things needing your attention: bank transfers awaiting confirmation, imports awaiting approval, import errors, low stock, new B2B applications, open warranty claims.
 
 ## 5. User roles
 
-`customer`, `b2b_customer` (company-linked, needs approval), `support`, `warehouse`, `content_editor`, `admin`, `superadmin`. Stored in `user_roles`, enforced server-side through `has_role()`; UI gating is cosmetic only.
+`customer`, `b2b_customer`, `support`, `admin`, `superadmin`. Stored in `user_roles`, enforced server-side. (Dropped warehouse/content_editor as unnecessary for v1 — easy to add later.)
 
 ## 6. Product data model
 
-`products` (slug, brand, category, type: hardware | license | software | cable | accessory | service, status, tax class, warranty months, requires_serial, requires_license, downloadable) → `product_variants` (SKU, EAN, price, weight, stock policy, attributes) → media, attributes (typed key/value + JSONB for filterable specs), translations, related/compatibility links, and `product_ecu_coverage` for supported control units.
+`products`: name, slug, brand, category, SKU, manufacturer part number, description, type (hardware / license / software / cable / accessory), status (draft / pending / published / archived), cost price, selling price, currency, stock, warranty months, requires_serial, requires_license, digital_delivery, master/slave flag, OBD / BENCH / BOOT flags.
 
-## 7. ECU/TCU data model
+Plus: `product_specs` (technical specifications, language-independent), `product_media` (images), `product_documents` (manuals, datasheets), `product_compatibility` (vehicles + ECUs), `product_translations` (name, description, marketing text only).
 
-Make → Model → Generation → Engine → Control unit (`ecus` / `tcus`: manufacturer e.g. Bosch/Continental, hardware number, software number, protocol, read/write methods, bench/boot/OBD flags). `product_ecu_coverage` joins a product/license to a control unit with operation flags (read, write, clone, immo, checksum) so "does this tool cover my ECU?" is a first-class search.
+Language-independent by design: SKU, MPN, part numbers, hardware/software numbers, technical spec values, compatibility data.
+
+## 7. ECU / TCU data model
+
+`ecu_products`: manufacturer, part number, hardware number, software number, ECU type, ECU manufacturer, vehicle brand, model, year, engine, condition (new / used / refurbished), stock, price, images, compatibility.
+
+Linked to the vehicle tree (make → model → engine) and to tool products via `product_ecu_coverage` (which tool covers which unit, and for which operation). Imports from authorized CSV/XML exports such as ECUSell go through the same review/approve pipeline as products.
 
 ## 8. Multilingual architecture
 
-URL-prefixed locales (`/de/…`, `/en/…`) for SEO with hreflang + canonical. Content translations in per-entity translation tables; UI strings in a `translations` table editable from admin, exported to JSON at build/runtime. Fallback chain: requested locale → EN → key. Launch set: EN, DE, TR, FR, ES, IT, PL, NL (final list is yours to confirm).
+- `languages` table drives everything — adding a language is a row, never a schema change.
+- Content: `*_translations` tables per entity. UI: `ui_translations`, editable in admin.
+- URL locale prefix (`/de/…`, `/ru/…`) with hreflang + canonical for SEO.
+- Fallback: requested language → English → key. Untranslated fields show English, never blank.
+- One product record, many translations — never duplicate products per language.
+- Launch languages: EN, DE, NL, FR, IT, ES, PT, PL, CS, SK, HU, RO, BG, HR, SL, EL, DA, SV, NO, FI, ET, LV, LT, GA, RU, TR.
+- Practical note: 26 languages is a lot of translation work. I'll build the system so admin can machine-translate a product into all languages in one click and then edit, so you don't type 26 versions by hand.
 
 ## 9. Currency architecture
 
-Base currency EUR. `currencies` + `fx_rates` (daily provider sync, manual override). Prices stored as integer minor units. Per-currency manual price overrides beat FX conversion where set. Rounding rules per currency; the currency charged is locked onto the order at checkout.
+EUR (base), USD, RUB. Rates stored in `fx_rates` and refreshed from a provider — never hard-coded, editable in admin. Prices stored as integer minor units. Per-product manual price override per currency always wins over the converted rate. Currency is locked onto the order at checkout.
 
 ## 10. Payment architecture
 
-Stripe for cards/SEPA/iDEAL/Bancontact/Klarna via hosted checkout + webhooks (order state machine driven by webhook, never by the browser redirect). B2B: bank transfer / invoice with net terms and manual payment confirmation. EU VAT: VIES VAT-ID validation for B2B reverse charge, OSS rates per destination country, B2C prices VAT-inclusive.
+Two methods only:
+- **Card (credit/debit) via Stripe** — hosted checkout, order confirmed by webhook.
+- **Bank transfer** — order created as `awaiting_payment`, bank details + reference on the confirmation page and invoice, stays pending until an admin marks it paid in the Orders screen. Nothing ships or issues a license until then.
 
-## 11. Import architecture
+No SEPA, iDEAL, Bancontact, Klarna, crypto, Wise, installments or financing.
 
-Upload CSV/XLSX (or scheduled supplier feed) → `import_jobs` with a reusable column-mapping profile → row-level validation into `import_rows` → valid rows staged, invalid rows into `import_errors` with reason and inline fix + re-run. Supported types: products, prices, stock, serial numbers, ECU database, translations. Everything is idempotent by external key, dry-run preview before commit, full rollback per job.
+Modular by design: payments go through one internal payment-provider interface, so a second provider is a new adapter, not a rewrite.
 
-## 12. Development phases
+## 11. Tax / VAT (deliberately basic)
+
+Settings hold seller VAT number and invoice details. Customers/companies can store a VAT number. One configurable standard VAT rate (plus optional per-country override rows if you ever need them). Prices flagged VAT-included or VAT-excluded. VAT lines shown in cart, checkout and on the PDF invoice with sequential invoice numbering.
+
+No OSS engine, no VIES validation, no per-jurisdiction rate tables in v1 — the schema leaves room for all of it later.
+
+## 12. Import architecture
+
+Flow, enforced for every source: **IMPORT → REVIEW → APPROVE → PUBLISH**. Imported data lands in `staged_products` / staging rows and is **never** publicly visible until you approve it.
+
+- Upload CSV/XLSX/XML, or a saved supplier feed.
+- Reusable per-supplier column-mapping profile — map once, reuse forever.
+- Row validation: valid rows to Pending Approval, invalid rows to Import Errors with the reason and inline fix + re-run.
+- Pending Approval screen: full edit of every field (name, description, prices, images, category, translations) before publishing; bulk approve/reject.
+- Idempotent by supplier + external key, so re-importing updates rather than duplicates. Price/stock-only refreshes can be auto-applied to already-published products (your choice per supplier), while new products always require approval.
+- Target suppliers: FLEX / Magicmotorsport, AutoTuner, Alientech, SMOK, CarProTool, Thinkcar, OBDSTAR, plus ECUSell-style ECU exports.
+
+## 13. Out of scope for v1
+
+Product reviews, wishlist, abandoned cart, dealer commissions, reseller portal, firmware updates, support ticketing, multi-warehouse, dangerous-goods/export rules. The schema won't block any of them later.
+
+## 14. Development phases
 
 1. Design system + storefront shell (home, brands, categories, static pages).
-2. Cloud enablement, catalog schema, admin catalog CRUD.
+2. Cloud enablement, catalog + translation schema, admin product/brand/category CRUD.
 3. Product listing, filtering, search, product detail.
-4. Cart, checkout, Stripe, VAT, orders.
-5. Customer account: orders, devices, licenses, warranty.
-6. Serial number + license engine (issue, activate, revoke).
-7. Admin ops: stock, pricing, B2B, approvals.
-8. ECU database + coverage search.
-9. Imports + error queue.
-10. Multilingual + currency rollout, SEO, hardening.
+4. Cart, checkout, Stripe card payment, bank transfer + admin confirmation, orders, PDF invoices, basic VAT.
+5. Customer account: orders, devices, licenses, warranty, downloads.
+6. Serial number + license engine (issue, activate, revoke) and warranty registration.
+7. Admin operations: stock, pricing, price lists, B2B customers.
+8. ECU database, vehicle compatibility search, ECU product pages.
+9. Import engine: mapping profiles, staging, Pending Approval, Import Errors; supplier + ECUSell formats.
+10. Multilingual rollout (26 languages, bulk machine translation + editing), EUR/USD/RUB, SEO, security review, go-live.
 
-## What's missing from your spec
+Each phase ends with a working, usable system — you can sell after Phase 4.
 
-Returns/RMA flow, invoicing + EU e-invoice numbering, shipping carriers and dangerous-goods/export rules, GDPR (consent, data export, deletion), cookie banner, dealer/reseller portal with commissions, wishlist/quotes (B2B RFQ is common in this sector), software download delivery + version history, device firmware update channel, subscription/renewal billing for licenses (annual updates are the norm), anti-piracy license binding (hardware ID), support ticketing, product reviews, stock backorder/pre-order, multi-warehouse, audit logging, staff 2FA, analytics, abandoned cart, and email/notification templates.
+## Assumptions worth confirming
 
-## Assumptions I'm making (say if any are wrong)
+- EU-registered seller, EUR base currency, single storefront.
+- Stripe is the card processor (built into Lovable, no separate account setup needed).
+- Licenses bind to a device serial / hardware ID, not just an account.
+- Physical goods ship; licenses and software deliver digitally after payment is confirmed.
+- Supplier imports are file/feed based, not live supplier APIs (added later per supplier if they offer one).
 
-- EU-based seller, EUR base currency, VAT/OSS applies.
-- Stripe is the payment provider; B2B also needs invoice terms.
-- Licenses are bound to a device serial / hardware ID, not just an account.
-- Physical goods ship; software/licenses deliver digitally.
-- Single storefront, not multi-tenant.
-
-Approve this and I'll start with Phase 1 only.
+Approve this and I'll build Phase 1 only.
