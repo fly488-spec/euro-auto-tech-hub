@@ -83,6 +83,8 @@ Two methods only:
 
 No SEPA, iDEAL, Bancontact, Klarna, crypto, Wise, installments or financing.
 
+Stripe requires its own external account, API credentials and production activation (business verification, bank account, webhook endpoint). The app is built against the Stripe API, but all real credentials live in server-side secrets and going live is an explicit external configuration step you perform — not something the code assumes is already done. Until credentials are configured, card payment stays disabled in settings and bank transfer works on its own.
+
 Modular by design: payments go through one internal payment-provider interface, so a second provider is a new adapter, not a rewrite.
 
 ## 11. Tax / VAT (deliberately basic)
@@ -99,7 +101,10 @@ Flow, enforced for every source: **IMPORT → REVIEW → APPROVE → PUBLISH**. 
 - Reusable per-supplier column-mapping profile — map once, reuse forever.
 - Row validation: valid rows to Pending Approval, invalid rows to Import Errors with the reason and inline fix + re-run.
 - Pending Approval screen: full edit of every field (name, description, prices, images, category, translations) before publishing; bulk approve/reject.
-- Idempotent by supplier + external key, so re-importing updates rather than duplicates. Price/stock-only refreshes can be auto-applied to already-published products (your choice per supplier), while new products always require approval.
+- Idempotent by supplier + external key, so re-importing updates rather than duplicates.
+- **Nothing published ever changes by itself in v1.** When an import brings a different price or stock value for an already-published product, it creates a change-review item (old value → new value, source, date) in Pending Approval. You approve or reject; only approved changes are written to the live product. Bulk approve is available.
+- New products always require manual approval before publication, without exception.
+- Per-supplier modes exist in the schema from day one — manual import, automatic synchronization, automatic price/stock update, manual approval for price/stock changes — but every supplier ships defaulted to **manual import + manual approval**. Automatic synchronization is built as a switch, not enabled.
 - Target suppliers: FLEX / Magicmotorsport, AutoTuner, Alientech, SMOK, CarProTool, Thinkcar, OBDSTAR, plus ECUSell-style ECU exports.
 
 ## 13. Out of scope for v1
