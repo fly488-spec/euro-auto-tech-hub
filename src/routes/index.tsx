@@ -136,11 +136,11 @@ function HomePage() {
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {capabilities.map((item, i) => (
+            {capabilities.map((item, i) => {
+              const Icon = capabilityIcons[i % capabilityIcons.length]!;
+              return (
               <div key={item.title} className="rounded-md border border-border bg-elevated p-6">
-                {[Cpu, KeyRound, ShieldCheck, CircuitBoard][i % 4]!({
-                  className: "size-5 text-primary",
-                })}
+                <Icon className="size-5 text-primary" />
                 <h3 className="mt-4 text-base font-semibold">{item.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
               </div>
