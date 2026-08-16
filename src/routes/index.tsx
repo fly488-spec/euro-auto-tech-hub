@@ -27,7 +27,18 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const capabilityIcons = [Cpu, KeyRound, ShieldCheck, CircuitBoard];
+function CapabilityIcon({ index, className }: { index: number; className?: string }) {
+  switch (index % 4) {
+    case 0:
+      return <Cpu className={className} />;
+    case 1:
+      return <KeyRound className={className} />;
+    case 2:
+      return <ShieldCheck className={className} />;
+    default:
+      return <CircuitBoard className={className} />;
+  }
+}
 
 const stats = [
   { value: "7", label: "Authorised brands" },
@@ -143,10 +154,9 @@ function HomePage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {capabilities.map((item, i) => {
-              const Icon = capabilityIcons[i % capabilityIcons.length]!;
               return (
               <div key={item.title} className="rounded-md border border-border bg-elevated p-6">
-                <Icon className="size-5 text-primary" />
+                <CapabilityIcon index={i} className="size-5 text-primary" />
                 <h3 className="mt-4 text-base font-semibold">{item.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
               </div>
