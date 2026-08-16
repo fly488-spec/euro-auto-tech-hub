@@ -26,6 +26,8 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+const capabilityIcons = [Cpu, KeyRound, ShieldCheck, CircuitBoard];
+
 const stats = [
   { value: "7", label: "Authorised brands" },
   { value: "580+", label: "Catalogue items" },
