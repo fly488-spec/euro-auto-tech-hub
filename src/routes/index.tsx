@@ -5,6 +5,7 @@ import heroImage from "@/assets/hero-diagnostics.jpg";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { brands, capabilities, categories } from "@/lib/catalog-data";
+import { categoryIcons } from "@/lib/category-icons";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,6 +26,8 @@ export const Route = createFileRoute("/")({
   }),
   component: HomePage,
 });
+
+const capabilityIcons = [Cpu, KeyRound, ShieldCheck, CircuitBoard];
 
 const stats = [
   { value: "7", label: "Authorised brands" },
@@ -106,19 +109,22 @@ function HomePage() {
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.slice(0, 8).map((cat) => (
+            {categories.slice(0, 8).map((cat) => {
+              const Icon = categoryIcons[cat.icon];
+              return (
               <article
                 key={cat.slug}
                 className="group rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
               >
-                <CircuitBoard className="size-5 text-primary" />
+                <Icon className="size-5 text-primary" />
                 <h3 className="mt-4 text-base font-semibold">{cat.name}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{cat.description}</p>
                 <p className="spec-value mt-4 text-xs text-muted-foreground">
                   {cat.count} products
                 </p>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -136,15 +142,16 @@ function HomePage() {
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {capabilities.map((item, i) => (
+            {capabilities.map((item, i) => {
+              const Icon = capabilityIcons[i % capabilityIcons.length]!;
+              return (
               <div key={item.title} className="rounded-md border border-border bg-elevated p-6">
-                {[Cpu, KeyRound, ShieldCheck, CircuitBoard][i % 4]!({
-                  className: "size-5 text-primary",
-                })}
+                <Icon className="size-5 text-primary" />
                 <h3 className="mt-4 text-base font-semibold">{item.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

@@ -1,18 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Cable,
-  Cpu,
-  Download,
-  Gauge,
-  KeyRound,
-  MemoryStick,
-  Shield,
-  Wrench,
-  type LucideIcon,
-} from "lucide-react";
-
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { categories, type Category } from "@/lib/catalog-data";
+import { categories } from "@/lib/catalog-data";
+import { categoryIcons } from "@/lib/category-icons";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -33,17 +22,6 @@ export const Route = createFileRoute("/categories")({
   component: CategoriesPage,
 });
 
-const icons: Record<Category["icon"], LucideIcon> = {
-  cpu: Cpu,
-  microchip: MemoryStick,
-  key: KeyRound,
-  cable: Cable,
-  wrench: Wrench,
-  shield: Shield,
-  download: Download,
-  gauge: Gauge,
-};
-
 function CategoriesPage() {
   return (
     <PageShell>
@@ -55,7 +33,7 @@ function CategoriesPage() {
       <section className="py-16">
         <div className="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((cat) => {
-            const Icon = icons[cat.icon];
+            const Icon = categoryIcons[cat.icon];
             return (
               <article
                 key={cat.slug}
