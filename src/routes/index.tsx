@@ -1,11 +1,13 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CircuitBoard, Cpu, KeyRound, ShieldCheck } from "lucide-react";
 
 import heroImage from "@/assets/hero-diagnostics.jpg";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { brands, capabilities, categories } from "@/lib/catalog-data";
-import { categoryIcons } from "@/lib/category-icons";
+import { capabilities } from "@/lib/catalog-data";
+import { storefrontCatalogQuery } from "@/lib/catalog-queries";
+import { categoryIcons, type CategoryIconKey } from "@/lib/category-icons";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,8 +26,27 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(storefrontCatalogQuery),
+  errorComponent: () => (
+    <PageShell>
+      <div className="container-page py-24">
+        <h1 className="font-display text-3xl font-semibold">Diagnostiq</h1>
+        <p className="mt-3 text-muted-foreground">
+          The catalogue is temporarily unavailable. Please try again shortly.
+        </p>
+      </div>
+    </PageShell>
+  ),
+  notFoundComponent: () => (
+    <PageShell>
+      <div className="container-page py-24">
+        <h1 className="font-display text-3xl font-semibold">Page not found</h1>
+      </div>
+    </PageShell>
+  ),
   component: HomePage,
 });
+
 
 function CapabilityIcon({ index, className }: { index: number; className?: string }) {
   switch (index % 4) {
@@ -40,15 +61,20 @@ function CapabilityIcon({ index, className }: { index: number; className?: strin
   }
 }
 
-const stats = [
-  { value: "7", label: "Authorised brands" },
-  { value: "580+", label: "Catalogue items" },
-  { value: "26", label: "Languages planned" },
-  { value: "24 mo", label: "Standard warranty" },
-];
-
 function HomePage() {
+  const { data } = useSuspenseQuery(storefrontCatalogQuery);
+  const categories = data.categories.filter((c) => !c.parent_id);
+  const brands = data.brands;
+
+  const stats = [
+    { value: String(brands.length), label: "Authorised brands" },
+    { value: `${data.products.length}`, label: "Catalogue items" },
+    { value: "26", label: "Languages planned" },
+    { value: "24 mo", label: "Standard warranty" },
+  ];
+
   return (
+
     <PageShell>
       <section className="relative overflow-hidden border-b border-border bg-hero">
         <div className="absolute inset-0 bg-blueprint opacity-70" aria-hidden />
@@ -121,7 +147,9 @@ function HomePage() {
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {categories.slice(0, 8).map((cat) => {
-              const Icon = categoryIcons[cat.icon];
+              const Icon =
+                categoryIcons[(cat.icon ?? "cpu") as CategoryIconKey] ?? categoryIcons.cpu;
+
               return (
               <article
                 key={cat.slug}
@@ -131,7 +159,7 @@ function HomePage() {
                 <h3 className="mt-4 text-base font-semibold">{cat.name}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{cat.description}</p>
                 <p className="spec-value mt-4 text-xs text-muted-foreground">
-                  {cat.count} products
+                  {cat.product_count} products
                 </p>
               </article>
               );

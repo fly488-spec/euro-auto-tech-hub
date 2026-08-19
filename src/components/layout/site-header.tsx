@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useSession } from "@/hooks/use-session";
+
 
 const nav = [
   { to: "/", label: "Home" },
@@ -29,6 +31,8 @@ function Wordmark() {
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const { session } = useSession();
+
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-xl">
@@ -54,9 +58,12 @@ export function SiteHeader() {
           <Button variant="ghost" size="icon" aria-label="Search products">
             <Search className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Account">
-            <User className="size-4" />
+          <Button variant="ghost" size="icon" asChild aria-label={session ? "Account" : "Sign in"}>
+            <Link to={session ? "/admin" : "/auth"}>
+              <User className="size-4" />
+            </Link>
           </Button>
+
           <Button variant="ghost" size="icon" aria-label="Cart">
             <ShoppingCart className="size-4" />
           </Button>

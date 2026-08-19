@@ -1,7 +1,9 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { categories } from "@/lib/catalog-data";
-import { categoryIcons } from "@/lib/category-icons";
+import { storefrontCatalogQuery } from "@/lib/catalog-queries";
+import { categoryIcons, type CategoryIconKey } from "@/lib/category-icons";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -19,10 +21,28 @@ export const Route = createFileRoute("/categories")({
       },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(storefrontCatalogQuery),
+  errorComponent: () => (
+    <PageShell>
+      <PageHeader
+        eyebrow="Catalogue"
+        title="Equipment categories"
+        description="Category data is temporarily unavailable. Please try again shortly."
+      />
+    </PageShell>
+  ),
+  notFoundComponent: () => (
+    <PageShell>
+      <PageHeader eyebrow="Catalogue" title="Not found" description="This page does not exist." />
+    </PageShell>
+  ),
   component: CategoriesPage,
 });
 
 function CategoriesPage() {
+  const { data } = useSuspenseQuery(storefrontCatalogQuery);
+  const topLevel = data.categories.filter((c) => !c.parent_id);
+
   return (
     <PageShell>
       <PageHeader
@@ -32,8 +52,11 @@ function CategoriesPage() {
       />
       <section className="py-16">
         <div className="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {categories.map((cat) => {
-            const Icon = categoryIcons[cat.icon];
+          {topLevel.map((cat) => {
+            const Icon = categoryIcons[(cat.icon ?? "cpu") as CategoryIconKey] ?? categoryIcons.cpu;
+            const children = data.categories.filter((c) => c.parent_id === cat.id);
+            const count =
+              cat.product_count + children.reduce((sum, child) => sum + child.product_count, 0);
             return (
               <article
                 key={cat.slug}
@@ -44,9 +67,7 @@ function CategoriesPage() {
                 </span>
                 <h2 className="mt-5 text-lg font-semibold">{cat.name}</h2>
                 <p className="mt-2 flex-1 text-sm text-muted-foreground">{cat.description}</p>
-                <p className="spec-value mt-5 text-xs text-muted-foreground">
-                  {cat.count} products
-                </p>
+                <p className="spec-value mt-5 text-xs text-muted-foreground">{count} products</p>
               </article>
             );
           })}
