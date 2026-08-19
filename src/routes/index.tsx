@@ -1,11 +1,13 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, CircuitBoard, Cpu, KeyRound, ShieldCheck } from "lucide-react";
 
 import heroImage from "@/assets/hero-diagnostics.jpg";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { brands, capabilities, categories } from "@/lib/catalog-data";
-import { categoryIcons } from "@/lib/category-icons";
+import { capabilities } from "@/lib/catalog-data";
+import { storefrontCatalogQuery } from "@/lib/catalog-queries";
+import { categoryIcons, type CategoryIconKey } from "@/lib/category-icons";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,8 +26,27 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(storefrontCatalogQuery),
+  errorComponent: () => (
+    <PageShell>
+      <div className="container-page py-24">
+        <h1 className="font-display text-3xl font-semibold">Diagnostiq</h1>
+        <p className="mt-3 text-muted-foreground">
+          The catalogue is temporarily unavailable. Please try again shortly.
+        </p>
+      </div>
+    </PageShell>
+  ),
+  notFoundComponent: () => (
+    <PageShell>
+      <div className="container-page py-24">
+        <h1 className="font-display text-3xl font-semibold">Page not found</h1>
+      </div>
+    </PageShell>
+  ),
   component: HomePage,
 });
+
 
 function CapabilityIcon({ index, className }: { index: number; className?: string }) {
   switch (index % 4) {
