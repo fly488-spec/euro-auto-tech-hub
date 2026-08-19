@@ -54,9 +54,12 @@ export function SiteHeader() {
           <Button variant="ghost" size="icon" aria-label="Search products">
             <Search className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Account">
-            <User className="size-4" />
+          <Button variant="ghost" size="icon" asChild aria-label={session ? "Account" : "Sign in"}>
+            <Link to={session ? "/admin" : "/auth"}>
+              <User className="size-4" />
+            </Link>
           </Button>
+
           <Button variant="ghost" size="icon" aria-label="Cart">
             <ShoppingCart className="size-4" />
           </Button>
