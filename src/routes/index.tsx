@@ -61,15 +61,20 @@ function CapabilityIcon({ index, className }: { index: number; className?: strin
   }
 }
 
-const stats = [
-  { value: "7", label: "Authorised brands" },
-  { value: "580+", label: "Catalogue items" },
-  { value: "26", label: "Languages planned" },
-  { value: "24 mo", label: "Standard warranty" },
-];
-
 function HomePage() {
+  const { data } = useSuspenseQuery(storefrontCatalogQuery);
+  const categories = data.categories.filter((c) => !c.parent_id);
+  const brands = data.brands;
+
+  const stats = [
+    { value: String(brands.length), label: "Authorised brands" },
+    { value: `${data.products.length}`, label: "Catalogue items" },
+    { value: "26", label: "Languages planned" },
+    { value: "24 mo", label: "Standard warranty" },
+  ];
+
   return (
+
     <PageShell>
       <section className="relative overflow-hidden border-b border-border bg-hero">
         <div className="absolute inset-0 bg-blueprint opacity-70" aria-hidden />
