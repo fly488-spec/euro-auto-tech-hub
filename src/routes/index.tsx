@@ -159,7 +159,7 @@ function HomePage() {
                 <h3 className="mt-4 text-base font-semibold">{cat.name}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{cat.description}</p>
                 <p className="spec-value mt-4 text-xs text-muted-foreground">
-                  {cat.count} products
+                  {cat.product_count} products
                 </p>
               </article>
               );
