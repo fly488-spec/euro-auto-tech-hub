@@ -7,16 +7,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 const adminNav = [
   { to: "/admin", label: "Dashboard", exact: true },
-  { to: "/admin/products", label: "Products" },
-  { to: "/admin/brands", label: "Brands" },
-  { to: "/admin/categories", label: "Categories" },
-  { to: "/admin/translations", label: "Translations" },
-  { to: "/admin/customers", label: "Customers" },
-  { to: "/admin/orders", label: "Orders" },
-  { to: "/admin/inventory", label: "Inventory" },
-  { to: "/admin/imports", label: "Imports" },
-  { to: "/admin/settings", label: "Settings" },
+  { to: "/admin/products", label: "Products", exact: false },
+  { to: "/admin/brands", label: "Brands", exact: false },
+  { to: "/admin/categories", label: "Categories", exact: false },
+  { to: "/admin/translations", label: "Translations", exact: false },
+  { to: "/admin/customers", label: "Customers", exact: false },
+  { to: "/admin/orders", label: "Orders", exact: false },
+  { to: "/admin/inventory", label: "Inventory", exact: false },
+  { to: "/admin/imports", label: "Imports", exact: false },
+  { to: "/admin/settings", label: "Settings", exact: false },
 ] as const;
+
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
