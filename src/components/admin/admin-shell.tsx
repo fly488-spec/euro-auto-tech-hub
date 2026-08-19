@@ -60,7 +60,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <Link
               key={item.to}
               to={item.to}
-              activeOptions={{ exact: item.exact ?? false }}
+              activeOptions={{ exact: item.exact }}
               activeProps={{ className: "bg-elevated text-foreground" }}
               inactiveProps={{ className: "text-muted-foreground" }}
               className="whitespace-nowrap rounded-sm px-3 py-2 text-sm font-medium transition-colors hover:bg-elevated hover:text-foreground"
