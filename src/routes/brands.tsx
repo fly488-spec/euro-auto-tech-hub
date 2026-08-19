@@ -1,8 +1,9 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
-import { brands } from "@/lib/catalog-data";
+import { storefrontCatalogQuery } from "@/lib/catalog-queries";
 
 export const Route = createFileRoute("/brands")({
   head: () => ({
@@ -15,15 +16,32 @@ export const Route = createFileRoute("/brands")({
       },
       { property: "og:title", content: "Authorised Diagnostic & Tuning Brands | Diagnostiq" },
       {
-        name: "og:description",
+        property: "og:description",
         content: "Professional ECU and TCU tooling from leading European manufacturers.",
       },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(storefrontCatalogQuery),
+  errorComponent: () => (
+    <PageShell>
+      <PageHeader
+        eyebrow="Manufacturers"
+        title="Authorised brands"
+        description="Brand data is temporarily unavailable. Please try again shortly."
+      />
+    </PageShell>
+  ),
+  notFoundComponent: () => (
+    <PageShell>
+      <PageHeader eyebrow="Manufacturers" title="Not found" description="This page does not exist." />
+    </PageShell>
+  ),
   component: BrandsPage,
 });
 
 function BrandsPage() {
+  const { data } = useSuspenseQuery(storefrontCatalogQuery);
+
   return (
     <PageShell>
       <PageHeader
@@ -33,25 +51,26 @@ function BrandsPage() {
       />
       <section className="py-16">
         <div className="container-page grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {brands.map((brand) => (
-            <article
-              key={brand.slug}
-              className="flex flex-col rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <h2 className="font-display text-lg font-semibold">{brand.name}</h2>
-                <span className="eyebrow whitespace-nowrap">{brand.origin}</span>
-              </div>
-              <p className="mt-3 flex-1 text-sm text-muted-foreground">{brand.tagline}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {brand.focus.map((f) => (
-                  <Badge key={f} variant="secondary" className="spec-value text-[0.7rem]">
-                    {f}
+          {data.brands.map((brand) => {
+            const productCount = data.products.filter((p) => p.brand_id === brand.id).length;
+            return (
+              <article
+                key={brand.slug}
+                className="flex flex-col rounded-md border border-border bg-surface p-6 transition-colors hover:border-border-strong"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <h2 className="font-display text-lg font-semibold">{brand.name}</h2>
+                  {brand.origin && <span className="eyebrow whitespace-nowrap">{brand.origin}</span>}
+                </div>
+                <p className="mt-3 flex-1 text-sm text-muted-foreground">{brand.tagline}</p>
+                <div className="mt-5">
+                  <Badge variant="secondary" className="spec-value text-[0.7rem]">
+                    {productCount} products
                   </Badge>
-                ))}
-              </div>
-            </article>
-          ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </PageShell>
