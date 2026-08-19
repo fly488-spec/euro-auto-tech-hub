@@ -55,14 +55,27 @@ export const listAdminProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertStaff(context.supabase, context.userId);
-    const products = unwrap(
+    const baseProducts = unwrap(
       await context.supabase
         .from("products")
         .select(
-          "id, slug, name, sku, mpn, status, product_type, price_minor, cost_price_minor, currency_code, stock, brand_id, category_id, is_demo, warranty_months, requires_serial, requires_license, digital_delivery, is_master, is_slave, supports_obd, supports_bench, supports_boot, short_description, description, primary_image_url",
+          "id, slug, name, sku, mpn, status, product_type, price_minor, currency_code, stock, brand_id, category_id, is_demo, warranty_months, requires_serial, requires_license, digital_delivery, is_master, is_slave, supports_obd, supports_bench, supports_boot, short_description, description, primary_image_url",
         )
         .order("created_at", { ascending: false }),
-    );
+    ) as Array<{ id: string }>;
+
+    // cost_price_minor is staff-only: readable through the service-role client after
+    // the staff check above, never through the caller's RLS client.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const costs = unwrap(
+      await supabaseAdmin.from("products").select("id, cost_price_minor"),
+    ) as Array<{ id: string; cost_price_minor: number }>;
+    const costById = new Map(costs.map((c) => [c.id, c.cost_price_minor]));
+    const products = baseProducts.map((p) => ({
+      ...p,
+      cost_price_minor: costById.get(p.id) ?? 0,
+    }));
+
     const brands = unwrap(
       await context.supabase.from("brands").select("id, name").order("name"),
     );
@@ -71,6 +84,7 @@ export const listAdminProducts = createServerFn({ method: "GET" })
     );
     return { products, brands, categories };
   });
+
 
 export const saveProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
