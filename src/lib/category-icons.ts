@@ -10,9 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import type { Category } from "./catalog-data";
-
-export const categoryIcons: Record<Category["icon"], LucideIcon> = {
+export const categoryIcons = {
   cpu: Cpu,
   microchip: MemoryStick,
   key: KeyRound,
@@ -21,4 +19,6 @@ export const categoryIcons: Record<Category["icon"], LucideIcon> = {
   shield: Shield,
   download: Download,
   gauge: Gauge,
-};
+} satisfies Record<string, LucideIcon>;
+
+export type CategoryIconKey = keyof typeof categoryIcons;
