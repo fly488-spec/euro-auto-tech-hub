@@ -147,7 +147,9 @@ function HomePage() {
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {categories.slice(0, 8).map((cat) => {
-              const Icon = categoryIcons[cat.icon];
+              const Icon =
+                categoryIcons[(cat.icon ?? "cpu") as CategoryIconKey] ?? categoryIcons.cpu;
+
               return (
               <article
                 key={cat.slug}
